@@ -1,49 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from database import engine, Base, get_db
-import models, schemas
+from fastapi import FastAPI
+from database import engine, Base
+from routers import lecturers
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Lecturers API with PostgreSQL")
 
-@app.post("/lecturers/", response_model=schemas.LecturerResponse, status_code=status.HTTP_201_CREATED)
-def create_lecturer(lecturer: schemas.LecturerCreate, db: Session = Depends(get_db)):
-    db_lecturer = models.Lecturer(**lecturer.model_dump())
-    db.add(db_lecturer)
-    db.commit()
-    db.refresh(db_lecturer)
-    return db_lecturer
+app.include_router(lecturers.router)
 
-@app.get("/lecturers/", response_model=list[schemas.LecturerResponse])
-def get_lecturers(db: Session = Depends(get_db)):
-    return db.query(models.Lecturer).all()
-
-@app.get("/lecturers/{lecturer_id}", response_model=schemas.LecturerResponse)
-def get_lecturer(lecturer_id: int, db: Session = Depends(get_db)):
-    lecturer = db.query(models.Lecturer).filter(models.Lecturer.id == lecturer_id).first()
-    if not lecturer:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lecturer not found")
-    return lecturer
-
-@app.put("/lecturers/{lecturer_id}", response_model=schemas.LecturerResponse)
-def update_lecturer(lecturer_id: int, updated_data: schemas.LecturerCreate, db: Session = Depends(get_db)):
-    query = db.query(models.Lecturer).filter(models.Lecturer.id == lecturer_id)
-    lecturer = query.first()
-    if not lecturer:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lecturer not found")
-    
-    query.update(updated_data.model_dump(), synchronize_session=False)
-    db.commit()
-    return query.first()
-
-@app.delete("/lecturers/{lecturer_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_lecturer(lecturer_id: int, db: Session = Depends(get_db)):
-    query = db.query(models.Lecturer).filter(models.Lecturer.id == lecturer_id)
-    lecturer = query.first()
-    if not lecturer:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lecturer not found")
-    
-    query.delete(synchronize_session=False)
-    db.commit()
-    return None
+@app.get("/")
+def root():
+    return {"message": "API is running successfully"}
