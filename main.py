@@ -1,21 +1,20 @@
-from fastapi import FastAPI, HTTPException
-from data import lecturers_data
+from fastapi import FastAPI, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from database import engine, Base, get_db
+import models, schemas
 
-app = FastAPI()
+Base.metadata.create_all(bind=engine)
 
+app = FastAPI(title="Lecturers API with PostgreSQL")
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Lecturer Courses API"}
+@app.post("/lecturers/", response_model=schemas.LecturerResponse, status_code=status.HTTP_201_CREATED)
+def create_lecturer(lecturer: schemas.LecturerCreate, db: Session = Depends(get_db)):
+    db_lecturer = models.Lecturer(**lecturer.model_dump())
+    db.add(db_lecturer)
+    db.commit()
+    db.refresh(db_lecturer)
+    return db_lecturer
 
-
-@app.get("/lecturers")
-def get_all_lecturers():
-    return lecturers_data
-
-
-@app.get("/lecturers/{name}")
-def get_lecturer_courses(name: str):
-    if name not in lecturers_data:
-        raise HTTPException(status_code=404, detail="Lecturer not found")
-    return {"lecturer": name, "courses": lecturers_data[name]}
+@app.get("/lecturers/", response_model=list[schemas.LecturerResponse])
+def get_lecturers(db: Session = Depends(get_db)):
+    return db.query(models.Lecturer).all()
