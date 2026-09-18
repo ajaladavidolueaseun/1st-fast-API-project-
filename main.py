@@ -18,3 +18,32 @@ def create_lecturer(lecturer: schemas.LecturerCreate, db: Session = Depends(get_
 @app.get("/lecturers/", response_model=list[schemas.LecturerResponse])
 def get_lecturers(db: Session = Depends(get_db)):
     return db.query(models.Lecturer).all()
+
+@app.get("/lecturers/{lecturer_id}", response_model=schemas.LecturerResponse)
+def get_lecturer(lecturer_id: int, db: Session = Depends(get_db)):
+    lecturer = db.query(models.Lecturer).filter(models.Lecturer.id == lecturer_id).first()
+    if not lecturer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lecturer not found")
+    return lecturer
+
+@app.put("/lecturers/{lecturer_id}", response_model=schemas.LecturerResponse)
+def update_lecturer(lecturer_id: int, updated_data: schemas.LecturerCreate, db: Session = Depends(get_db)):
+    query = db.query(models.Lecturer).filter(models.Lecturer.id == lecturer_id)
+    lecturer = query.first()
+    if not lecturer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lecturer not found")
+    
+    query.update(updated_data.model_dump(), synchronize_session=False)
+    db.commit()
+    return query.first()
+
+@app.delete("/lecturers/{lecturer_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_lecturer(lecturer_id: int, db: Session = Depends(get_db)):
+    query = db.query(models.Lecturer).filter(models.Lecturer.id == lecturer_id)
+    lecturer = query.first()
+    if not lecturer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lecturer not found")
+    
+    query.delete(synchronize_session=False)
+    db.commit()
+    return None
